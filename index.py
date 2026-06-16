@@ -37,7 +37,7 @@ async def on_member_join(member):
         embed = discord.Embed(
             title="Авторизация на сервере",
             description="Привет! Для доступа к серверу, пожалуйста, ответь на несколько вопросов.\n"
-                        "Введи свой **возраст** (только число).",
+                        "**Шаг 1 из 3** — Введи свой **возраст** (только число).",
             color=discord.Color.blue()
         )
         await member.send(embed=embed)
@@ -65,15 +65,26 @@ async def on_message(message):
             if message.content.isdigit():
                 user_data['age'] = int(message.content)
                 pending_verification[author_id]['stage'] = 'nickname'
-                await message.channel.send("Отлично! Теперь введи свой **игровой никнейм**.")
+                await message.channel.send("Отлично! Теперь введи свой **игровой никнейм**. **(Шаг 2 из 3)**")
             else:
                 await message.channel.send("Пожалуйста, введи возраст числом (например, 18).")
         
         elif stage == 'nickname':
             user_data['nickname'] = message.content
-            await send_verification_to_admin(message.author, user_data)
-            del pending_verification[author_id]
-            await message.channel.send("Спасибо! Твои данные отправлены администратору. Ожидай подтверждения.")
+            pending_verification[author_id]['stage'] = 'about'
+            await message.channel.send("Расскажи немного о себе и о том, что планируешь делать на сервере (минимум 20 слов, максимум 100). **(Шаг 3 из 3)**")
+        
+        elif stage == 'about':
+            word_count = len(message.content.split())
+            if word_count < 20:
+                await message.channel.send(f"Слишком коротко. Ты написал всего {word_count} слов. Нужно минимум 20. Попробуй ещё раз.")
+            elif word_count > 100:
+                await message.channel.send(f"Слишком длинно. Ты написал {word_count} слов. Нужно не больше 100. Сократи и отправь снова.")
+            else:
+                user_data['about'] = message.content
+                await send_verification_to_admin(message.author, user_data)
+                del pending_verification[author_id]
+                await message.channel.send("Спасибо! Твои данные отправлены администратору. Ожидай подтверждения.")
         
         return
     
@@ -95,6 +106,7 @@ async def send_verification_to_admin(user, user_data):
     embed.add_field(name="ID пользователя", value=user.id, inline=True)
     embed.add_field(name="Возраст", value=user_data['age'], inline=True)
     embed.add_field(name="Игровой никнейм", value=user_data['nickname'], inline=False)
+    embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
 
     view = discord.ui.View(timeout=None)
     approve_button = discord.ui.Button(label="✅ Одобрить", style=discord.ButtonStyle.success, custom_id=f"approve_{user.id}")
@@ -116,7 +128,6 @@ async def send_verification_to_admin(user, user_data):
                 try:
                     await member.add_roles(role)
                     
-                    # Создаем embed с подробной информацией об одобрении
                     embed = discord.Embed(
                         title="✅ Заявка одобрена",
                         color=discord.Color.green(),
@@ -126,7 +137,8 @@ async def send_verification_to_admin(user, user_data):
                     embed.add_field(name="Discord ID", value=member.id, inline=True)
                     embed.add_field(name="Возраст", value=user_data['age'], inline=True)
                     embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
-                    embed.set_footer(text=f"✅ Одобрено администратором {interaction.user.name}")
+                    embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
+                    embed.set_footer(text=f"Одобрено администратором {interaction.user.name}")
                     embed.set_thumbnail(url=member.display_avatar.url)
                     
                     await interaction.response.edit_message(embed=embed, view=None)
@@ -141,16 +153,13 @@ async def send_verification_to_admin(user, user_data):
         
         elif interaction.data['custom_id'].startswith("reject"):
             try:
-                # Пытаемся отправить сообщение пользователю перед баном
                 try:
                     await user.send("К сожалению, твоя заявка была отклонена. Ты был забанен на сервере.")
                 except:
                     pass
                 
-                # Баним пользователя
                 await member.ban(reason=f"Заявка отклонена администратором {interaction.user.name}")
                 
-                # Создаем embed с подробной информацией об отклонении
                 embed = discord.Embed(
                     title="❌ Заявка отклонена",
                     color=discord.Color.red(),
@@ -160,8 +169,9 @@ async def send_verification_to_admin(user, user_data):
                 embed.add_field(name="Discord ID", value=member.id, inline=True)
                 embed.add_field(name="Возраст", value=user_data['age'], inline=True)
                 embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
-                embed.add_field(name="Статус", value="🔨 Забанен", inline=False)
-                embed.set_footer(text=f"❌ Отклонено администратором {interaction.user.name}")
+                embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
+                embed.add_field(name="Статус", value="Забанен", inline=False)
+                embed.set_footer(text=f"Отклонено администратором {interaction.user.name}")
                 embed.set_thumbnail(url=member.display_avatar.url)
                 
                 await interaction.response.edit_message(embed=embed, view=None)
