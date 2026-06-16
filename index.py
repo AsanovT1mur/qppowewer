@@ -2,6 +2,10 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 intents = discord.Intents.default()
 intents.members = True
@@ -70,6 +74,8 @@ async def on_message(message):
             await send_verification_to_admin(message.author, user_data)
             del pending_verification[author_id]
             await message.channel.send("Спасибо! Твои данные отправлены администратору. Ожидай подтверждения.")
+        
+        return
     
     await bot.process_commands(message)
 
@@ -117,7 +123,7 @@ async def send_verification_to_admin(user, user_data):
                 except discord.Forbidden:
                     await interaction.response.send_message("У бота нет прав для выдачи роли.", ephemeral=True)
             else:
-                await interaction.response.send_message("Роль 'Участник' не найдена на сервере.", ephemeral=True)
+                await interaction.response.send_message("Роль 'Игрок' не найдена на сервере.", ephemeral=True)
         
         elif interaction.data['custom_id'].startswith("reject"):
             try:
@@ -131,6 +137,8 @@ async def send_verification_to_admin(user, user_data):
             
             except discord.Forbidden:
                 await interaction.response.send_message("У бота нет прав для бана пользователя.", ephemeral=True)
+            except discord.NotFound:
+                await interaction.response.send_message("Пользователь покинул сервер до обработки заявки.", ephemeral=True)
             except Exception as e:
                 await interaction.response.send_message(f"Ошибка при бане: {str(e)}", ephemeral=True)
 
@@ -141,7 +149,5 @@ async def send_verification_to_admin(user, user_data):
     view.add_item(reject_button)
     
     await admin_channel.send(embed=embed, view=view)
-from dotenv import load_dotenv
-load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+
 bot.run(BOT_TOKEN)
