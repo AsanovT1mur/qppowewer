@@ -125,8 +125,8 @@ async def send_verification_to_admin(user, user_data):
                     embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
                     embed.add_field(name="Discord ID", value=member.id, inline=True)
                     embed.add_field(name="Возраст", value=user_data['age'], inline=True)
-                    embed.add_field(name="🎮 Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
-                    embed.set_footer(text=f"Одобрено администратором {interaction.user.name}")
+                    embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+                    embed.set_footer(text=f"✅ Одобрено администратором {interaction.user.name}")
                     embed.set_thumbnail(url=member.display_avatar.url)
                     
                     await interaction.response.edit_message(embed=embed, view=None)
@@ -159,9 +159,9 @@ async def send_verification_to_admin(user, user_data):
                 embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
                 embed.add_field(name="Discord ID", value=member.id, inline=True)
                 embed.add_field(name="Возраст", value=user_data['age'], inline=True)
-                embed.add_field(name="🎮 Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+                embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
                 embed.add_field(name="Статус", value="🔨 Забанен", inline=False)
-                embed.set_footer(text=f"Отклонено администратором {interaction.user.name}")
+                embed.set_footer(text=f"❌ Отклонено администратором {interaction.user.name}")
                 embed.set_thumbnail(url=member.display_avatar.url)
                 
                 await interaction.response.edit_message(embed=embed, view=None)
