@@ -115,7 +115,21 @@ async def send_verification_to_admin(user, user_data):
             if role:
                 try:
                     await member.add_roles(role)
-                    await interaction.response.edit_message(content=f"✅ Заявка одобрена. Пользователю {member.mention} выдана роль {role.name}.", embed=None, view=None)
+                    
+                    # Создаем embed с подробной информацией об одобрении
+                    embed = discord.Embed(
+                        title="✅ Заявка одобрена",
+                        color=discord.Color.green(),
+                        timestamp=discord.utils.utcnow()
+                    )
+                    embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
+                    embed.add_field(name="Discord ID", value=member.id, inline=True)
+                    embed.add_field(name="Возраст", value=user_data['age'], inline=True)
+                    embed.add_field(name="🎮 Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+                    embed.set_footer(text=f"Одобрено администратором {interaction.user.name}")
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    
+                    await interaction.response.edit_message(embed=embed, view=None)
                     try:
                         await user.send("Поздравляю! Твоя заявка одобрена. Добро пожаловать на сервер!")
                     except:
@@ -127,13 +141,30 @@ async def send_verification_to_admin(user, user_data):
         
         elif interaction.data['custom_id'].startswith("reject"):
             try:
+                # Пытаемся отправить сообщение пользователю перед баном
                 try:
                     await user.send("К сожалению, твоя заявка была отклонена. Ты был забанен на сервере.")
                 except:
                     pass
                 
+                # Баним пользователя
                 await member.ban(reason=f"Заявка отклонена администратором {interaction.user.name}")
-                await interaction.response.edit_message(content=f"❌ Заявка отклонена. Пользователь {member.mention} был забанен.", embed=None, view=None)
+                
+                # Создаем embed с подробной информацией об отклонении
+                embed = discord.Embed(
+                    title="❌ Заявка отклонена",
+                    color=discord.Color.red(),
+                    timestamp=discord.utils.utcnow()
+                )
+                embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
+                embed.add_field(name="Discord ID", value=member.id, inline=True)
+                embed.add_field(name="Возраст", value=user_data['age'], inline=True)
+                embed.add_field(name="🎮 Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+                embed.add_field(name="Статус", value="🔨 Забанен", inline=False)
+                embed.set_footer(text=f"Отклонено администратором {interaction.user.name}")
+                embed.set_thumbnail(url=member.display_avatar.url)
+                
+                await interaction.response.edit_message(embed=embed, view=None)
             
             except discord.Forbidden:
                 await interaction.response.send_message("У бота нет прав для бана пользователя.", ephemeral=True)
