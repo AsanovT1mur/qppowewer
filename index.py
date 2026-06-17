@@ -90,25 +90,6 @@ async def on_message(message):
     
     await bot.process_commands(message)
 
-@bot.command(name='adminlist')
-@commands.has_permissions(administrator=True)
-async def send_admin_list_command(ctx):
-    embed = discord.Embed(
-        title="👑 Администрация сервера Arefulate",
-        description="Свяжитесь с нами, если у вас есть вопросы или предложения. Мы всегда рады помочь!",
-        color=discord.Color.gold(),
-        timestamp=discord.utils.utcnow()
-    )
-    embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else bot.user.display_avatar.url)
-    
-    embed.add_field(name="👤 Владельцы", value="**MrKekmen, Drxsa**", inline=False)
-    embed.add_field(name="🛡️ Главный администратор", value="**Не назначен**", inline=False)
-    embed.add_field(name="⚙️ Технический администратор", value="**VoidWalker2042**", inline=False)
-    embed.set_footer(text="Arefulate Staff • Обновлено")
-    
-    await ctx.send(embed=embed)
-    await ctx.message.delete()
-
 async def send_verification_to_admin(user, user_data):
     admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
     if not admin_channel:
