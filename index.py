@@ -15,6 +15,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 ADMIN_CHANNEL_ID = 1475925864641462445
 WELCOME_CHANNEL_ID = 1475912054950072561
 pending_verification = {}
+welcome_messages = {}
 
 @bot.event
 async def on_ready():
@@ -31,8 +32,9 @@ async def on_member_join(member):
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        await welcome_channel.send(embed=embed)
+        msg = await welcome_channel.send(embed=embed)
         await welcome_channel.send(f"||{member.mention}||")
+        welcome_messages[member.id] = msg
     
     try:
         embed = discord.Embed(
@@ -91,6 +93,28 @@ async def on_message(message):
     
     await bot.process_commands(message)
 
+async def update_welcome_message(user_id, status):
+    if user_id in welcome_messages:
+        msg = welcome_messages[user_id]
+        embed = msg.embeds[0]
+        
+        if status == "approved":
+            new_description = embed.description.replace(
+                "**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
+                "**✅ Заявка одобрена**"
+            )
+            embed.color = discord.Color.green()
+        elif status == "rejected":
+            new_description = embed.description.replace(
+                "**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
+                "**❌ Заявка отклонена**"
+            )
+            embed.color = discord.Color.red()
+        
+        embed.description = new_description
+        await msg.edit(embed=embed)
+        del welcome_messages[user_id]
+
 async def send_verification_to_admin(user, user_data):
     admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
     if not admin_channel:
@@ -129,6 +153,8 @@ async def send_verification_to_admin(user, user_data):
                 try:
                     await member.add_roles(role)
                     
+                    await update_welcome_message(user.id, "approved")
+                    
                     embed = discord.Embed(
                         title="✅ Заявка одобрена",
                         color=discord.Color.green(),
@@ -158,6 +184,8 @@ async def send_verification_to_admin(user, user_data):
                     await user.send("К сожалению, твоя заявка была отклонена. Ты был забанен на сервере.")
                 except:
                     pass
+                
+                await update_welcome_message(user.id, "rejected")
                 
                 await member.ban(reason=f"Заявка отклонена администратором {interaction.user.name}")
                 
