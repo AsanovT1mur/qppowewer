@@ -27,7 +27,7 @@ async def on_member_join(member):
         embed = discord.Embed(
             title=f"Добро пожаловать, {member.name}! 🎉",
             description=f"Мы рады приветствовать тебя на сервере Arefulate!\n"
-                        f"Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!",
+                        f"**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=member.display_avatar.url)
