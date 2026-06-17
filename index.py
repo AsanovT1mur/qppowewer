@@ -31,7 +31,7 @@ async def on_member_join(member):
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        await welcome_channel.send(embed=embed)
+        await welcome_channel.send(content=member.mention, embed=embed)
     
     try:
         embed = discord.Embed(
