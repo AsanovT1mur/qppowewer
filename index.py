@@ -102,15 +102,13 @@ async def update_welcome_message(user_id, status):
                 "**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
                 "**✅ Заявка одобрена**"
             )
+            embed.description = new_description
             embed.color = discord.Color.green()
         elif status == "rejected":
-            new_description = embed.description.replace(
-                "**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
-                "**❌ Заявка отклонена**"
-            )
+            embed.title = f"❌ Заявка отклонена, {bot.get_user(user_id).name if bot.get_user(user_id) else 'игрок'}"
+            embed.description = ""
             embed.color = discord.Color.red()
         
-        embed.description = new_description
         await msg.edit(content=f"||<@{user_id}>||", embed=embed)
         del welcome_messages[user_id]
 
