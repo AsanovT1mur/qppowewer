@@ -132,11 +132,9 @@ async def update_welcome_message(user_id, status):
         embed = msg.embeds[0]
         
         if status == "approved":
-            new_description = embed.description.replace(
-                "**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
-                "**✅ Заявка одобрена**"
-            )
-            embed.description = new_description
+            user = bot.get_user(user_id)
+            embed.title = f"Добро пожаловать, {user.name if user else 'игрок'}! 🎉"
+            embed.description = f"Мы рады приветствовать тебя на сервере Arefulate!\n\n**✅ Заявка одобрена**"
             embed.color = discord.Color.green()
             await msg.edit(content=f"||<@{user_id}>||", embed=embed)
             del welcome_messages[user_id]
@@ -145,6 +143,12 @@ async def update_welcome_message(user_id, status):
             embed.description = "**Ты можешь пройти регистрацию снова, для этого ответь боту.**"
             embed.color = discord.Color.red()
             await msg.edit(content=f"||<@{user_id}>||", embed=embed)
+        elif status == "kicked":
+            embed.title = f"❌ Заявка отклонена, {bot.get_user(user_id).name if bot.get_user(user_id) else 'игрок'}"
+            embed.description = ""
+            embed.color = discord.Color.red()
+            await msg.edit(content=f"||<@{user_id}>||", embed=embed)
+            del welcome_messages[user_id]
         elif status == "banned":
             embed.title = f"🚫 Игрок забанен"
             embed.description = ""
@@ -244,7 +248,14 @@ async def send_verification_to_admin(user, user_data):
                     await restart_verification(user)
                 
                 async def quit_callback(quit_interaction):
+                    await update_welcome_message(user.id, "kicked")
                     await quit_interaction.response.edit_message(content="До свидания! Если передумаешь, ты всегда можешь вернуться на сервер.", view=None)
+                    try:
+                        member = interaction.guild.get_member(user.id)
+                        if member:
+                            await member.kick(reason="Пользователь завершил общение.")
+                    except:
+                        pass
                 
                 retry_button.callback = retry_callback
                 quit_button.callback = quit_callback
