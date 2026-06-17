@@ -14,11 +14,69 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 ADMIN_CHANNEL_ID = 1475925864641462445
 WELCOME_CHANNEL_ID = 1475912054950072561
+ADMIN_LIST_CHANNEL_ID = 1475908349588672512
 pending_verification = {}
+
+admin_list_message_id = None
 
 @bot.event
 async def on_ready():
     print(f'Бот {bot.user} успешно запущен и готов к работе!')
+    await send_admin_list()
+
+async def send_admin_list():
+    global admin_list_message_id
+    channel = bot.get_channel(ADMIN_LIST_CHANNEL_ID)
+    if not channel:
+        print(f"Ошибка: Канал с ID {ADMIN_LIST_CHANNEL_ID} не найден!")
+        return
+
+    embed = discord.Embed(
+        title="👑 Администрация сервера Arefulate",
+        description="Свяжитесь с нами, если у вас есть вопросы или предложения. Мы всегда рады помочь!",
+        color=discord.Color.gold(),
+        timestamp=discord.utils.utcnow()
+    )
+    embed.set_thumbnail(url=bot.user.display_avatar.url)
+    
+    embed.add_field(
+        name="👤 Владельцы",
+        value="**MrKekmen, Drxsa**",
+        inline=False
+    )
+    embed.add_field(
+        name="🛡️ Главный администратор",
+        value="**Не назначен**",
+        inline=False
+    )
+    embed.add_field(
+        name="⚙️ Технический администратор",
+        value="**VoidWalker2042**",
+        inline=False
+    )
+    embed.set_footer(text="Arefulate Staff • Обновлено")
+
+    try:
+        if admin_list_message_id:
+            msg = await channel.fetch_message(admin_list_message_id)
+            await msg.edit(content=None, embed=embed)
+            print("Сообщение со списком администрации обновлено.")
+        else:
+            async for message in channel.history(limit=50):
+                if message.author == bot.user and message.embeds:
+                    admin_list_message_id = message.id
+                    await message.edit(content=None, embed=embed)
+                    print("Сообщение со списком администрации обновлено.")
+                    return
+            msg = await channel.send(embed=embed)
+            admin_list_message_id = msg.id
+            print("Сообщение со списком администрации отправлено впервые.")
+    except discord.NotFound:
+        msg = await channel.send(embed=embed)
+        admin_list_message_id = msg.id
+        print("Сообщение со списком администрации отправлено (старое не найдено).")
+    except Exception as e:
+        print(f"Ошибка при отправке списка администрации: {e}")
 
 @bot.event
 async def on_member_join(member):
