@@ -57,13 +57,9 @@ async def on_member_ban(guild, user):
         break
     
     try:
-        dm_channel = await user.create_dm()
-        await dm_channel.delete()
+        await user.send("Ты был забанен на сервере Arefulate. Чат закрыт.")
     except:
-        try:
-            await user.send("Ты был забанен на сервере Arefulate. Чат закрыт.")
-        except:
-            pass
+        pass
     
     if user.id in welcome_messages:
         msg = welcome_messages[user.id]
@@ -142,17 +138,19 @@ async def update_welcome_message(user_id, status):
             )
             embed.description = new_description
             embed.color = discord.Color.green()
+            await msg.edit(content=f"||<@{user_id}>||", embed=embed)
+            del welcome_messages[user_id]
         elif status == "rejected":
             embed.title = f"❌ Заявка отклонена, {bot.get_user(user_id).name if bot.get_user(user_id) else 'игрок'}"
             embed.description = "**Ты можешь пройти регистрацию снова, для этого ответь боту.**"
             embed.color = discord.Color.red()
+            await msg.edit(content=f"||<@{user_id}>||", embed=embed)
         elif status == "banned":
             embed.title = f"🚫 Игрок забанен"
             embed.description = ""
             embed.color = discord.Color.dark_red()
-        
-        await msg.edit(content=f"||<@{user_id}>||", embed=embed)
-        del welcome_messages[user_id]
+            await msg.edit(content=f"||<@{user_id}>||", embed=embed)
+            del welcome_messages[user_id]
 
 async def send_verification_to_admin(user, user_data):
     admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
@@ -246,11 +244,7 @@ async def send_verification_to_admin(user, user_data):
                     await restart_verification(user)
                 
                 async def quit_callback(quit_interaction):
-                    try:
-                        dm_channel = await user.create_dm()
-                        await dm_channel.delete()
-                    except:
-                        await user.send("До свидания! Если передумаешь, ты всегда можешь вернуться на сервер.")
+                    await quit_interaction.response.edit_message(content="До свидания! Если передумаешь, ты всегда можешь вернуться на сервер.", view=None)
                 
                 retry_button.callback = retry_callback
                 quit_button.callback = quit_callback
@@ -264,6 +258,11 @@ async def send_verification_to_admin(user, user_data):
         
         elif interaction.data['custom_id'].startswith("ban"):
             await update_welcome_message(user.id, "banned")
+            
+            try:
+                await user.send("Ты был забанен на сервере Arefulate.")
+            except:
+                pass
             
             try:
                 await member.ban(reason=f"Заявка отклонена администратором {interaction.user.name}")
