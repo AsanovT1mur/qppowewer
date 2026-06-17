@@ -27,7 +27,7 @@ async def on_member_join(member):
     if welcome_channel:
         embed = discord.Embed(
             title=f"Добро пожаловать, {member.name}! 🎉",
-            description=f"Мы рады приветствовать тебя на сервере Arefulate!\n"
+            description=f"Мы рады приветствовать тебя на сервере Arefulate!\n\n"
                         f"**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
             color=discord.Color.green()
         )
@@ -48,6 +48,44 @@ async def on_member_join(member):
         if welcome_channel:
             await welcome_channel.send(f"{member.mention}, не могу отправить тебе личное сообщение. "
                                         f"Пожалуйста, открой ЛС для получения авторизации.")
+
+@bot.event
+async def on_member_ban(guild, user):
+    async for entry in guild.audit_logs(action=discord.AuditLogAction.ban, limit=1):
+        if entry.user == bot.user:
+            return
+        break
+    
+    try:
+        dm_channel = await user.create_dm()
+        await dm_channel.delete()
+    except:
+        try:
+            await user.send("Ты был забанен на сервере Arefulate. Чат закрыт.")
+        except:
+            pass
+    
+    if user.id in welcome_messages:
+        msg = welcome_messages[user.id]
+        embed = msg.embeds[0]
+        embed.title = f"🚫 Игрок забанен"
+        embed.description = ""
+        embed.color = discord.Color.dark_red()
+        await msg.edit(content=f"||<@{user.id}>||", embed=embed)
+        del welcome_messages[user.id]
+    
+    if user.id in pending_verification:
+        del pending_verification[user.id]
+
+async def restart_verification(user):
+    pending_verification[user.id] = {'stage': 'age', 'data': {}}
+    embed = discord.Embed(
+        title="Авторизация на сервере",
+        description="Привет! Для доступа к серверу, пожалуйста, ответь на несколько вопросов.\n"
+                    "**Шаг 1 из 3** — Введи свой **возраст** (только число).",
+        color=discord.Color.blue()
+    )
+    await user.send(embed=embed)
             
 @bot.event
 async def on_message(message):
@@ -106,8 +144,12 @@ async def update_welcome_message(user_id, status):
             embed.color = discord.Color.green()
         elif status == "rejected":
             embed.title = f"❌ Заявка отклонена, {bot.get_user(user_id).name if bot.get_user(user_id) else 'игрок'}"
-            embed.description = ""
+            embed.description = "**Ты можешь пройти регистрацию снова, для этого ответь боту.**"
             embed.color = discord.Color.red()
+        elif status == "banned":
+            embed.title = f"🚫 Игрок забанен"
+            embed.description = ""
+            embed.color = discord.Color.dark_red()
         
         await msg.edit(content=f"||<@{user_id}>||", embed=embed)
         del welcome_messages[user_id]
@@ -132,7 +174,8 @@ async def send_verification_to_admin(user, user_data):
 
     view = discord.ui.View(timeout=None)
     approve_button = discord.ui.Button(label="✅ Одобрить", style=discord.ButtonStyle.success, custom_id=f"approve_{user.id}")
-    reject_button = discord.ui.Button(label="❌ Отклонить и забанить", style=discord.ButtonStyle.danger, custom_id=f"reject_{user.id}")
+    reject_button = discord.ui.Button(label="❌ Отклонить", style=discord.ButtonStyle.danger, custom_id=f"reject_{user.id}")
+    ban_button = discord.ui.Button(label="⛔ Отказать и забанить", style=discord.ButtonStyle.danger, custom_id=f"ban_{user.id}")
 
     async def button_callback(interaction):
         if not interaction.user.guild_permissions.administrator:
@@ -176,44 +219,84 @@ async def send_verification_to_admin(user, user_data):
                 await interaction.response.send_message("Роль 'Игрок' не найдена на сервере.", ephemeral=True)
         
         elif interaction.data['custom_id'].startswith("reject"):
-            try:
-                try:
-                    await user.send("К сожалению, твоя заявка была отклонена. Ты был забанен на сервере.")
-                except:
-                    pass
-                
-                await update_welcome_message(user.id, "rejected")
-                
-                await member.ban(reason=f"Заявка отклонена администратором {interaction.user.name}")
-                
-                embed = discord.Embed(
-                    title="❌ Заявка отклонена",
-                    color=discord.Color.red(),
-                    timestamp=discord.utils.utcnow()
-                )
-                embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
-                embed.add_field(name="Discord ID", value=member.id, inline=True)
-                embed.add_field(name="Возраст", value=user_data['age'], inline=True)
-                embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
-                embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
-                embed.add_field(name="Статус", value="Забанен", inline=False)
-                embed.set_footer(text=f"Отклонено администратором {interaction.user.name}")
-                embed.set_thumbnail(url=member.display_avatar.url)
-                
-                await interaction.response.edit_message(embed=embed, view=None)
+            await update_welcome_message(user.id, "rejected")
             
+            embed = discord.Embed(
+                title="❌ Заявка отклонена",
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
+            embed.add_field(name="Discord ID", value=member.id, inline=True)
+            embed.add_field(name="Возраст", value=user_data['age'], inline=True)
+            embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+            embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
+            embed.set_footer(text=f"Отклонено администратором {interaction.user.name}")
+            embed.set_thumbnail(url=member.display_avatar.url)
+            
+            await interaction.response.edit_message(embed=embed, view=None)
+            
+            try:
+                retry_view = discord.ui.View(timeout=None)
+                retry_button = discord.ui.Button(label="🔄 Попробовать снова", style=discord.ButtonStyle.primary, custom_id=f"retry_{user.id}")
+                quit_button = discord.ui.Button(label="🚪 Закончить общение", style=discord.ButtonStyle.secondary, custom_id=f"quit_{user.id}")
+                
+                async def retry_callback(retry_interaction):
+                    await retry_interaction.response.edit_message(content=f"Начинаем регистрацию заново, {user.mention}...", view=None)
+                    await restart_verification(user)
+                
+                async def quit_callback(quit_interaction):
+                    try:
+                        dm_channel = await user.create_dm()
+                        await dm_channel.delete()
+                    except:
+                        await user.send("До свидания! Если передумаешь, ты всегда можешь вернуться на сервер.")
+                
+                retry_button.callback = retry_callback
+                quit_button.callback = quit_callback
+                
+                retry_view.add_item(retry_button)
+                retry_view.add_item(quit_button)
+                
+                await user.send(f"{user.mention}, к сожалению, твоя заявка была отклонена. Ты можешь попробовать снова или закончить общение.", view=retry_view)
+            except:
+                pass
+        
+        elif interaction.data['custom_id'].startswith("ban"):
+            await update_welcome_message(user.id, "banned")
+            
+            try:
+                await member.ban(reason=f"Заявка отклонена администратором {interaction.user.name}")
             except discord.Forbidden:
                 await interaction.response.send_message("У бота нет прав для бана пользователя.", ephemeral=True)
+                return
             except discord.NotFound:
                 await interaction.response.send_message("Пользователь покинул сервер до обработки заявки.", ephemeral=True)
-            except Exception as e:
-                await interaction.response.send_message(f"Ошибка при бане: {str(e)}", ephemeral=True)
+                return
+            
+            embed = discord.Embed(
+                title="⛔ Заявка отклонена",
+                color=discord.Color.dark_red(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
+            embed.add_field(name="Discord ID", value=member.id, inline=True)
+            embed.add_field(name="Возраст", value=user_data['age'], inline=True)
+            embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+            embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
+            embed.add_field(name="Статус", value="Забанен", inline=False)
+            embed.set_footer(text=f"Забанен администратором {interaction.user.name}")
+            embed.set_thumbnail(url=member.display_avatar.url)
+            
+            await interaction.response.edit_message(embed=embed, view=None)
 
     approve_button.callback = button_callback
     reject_button.callback = button_callback
+    ban_button.callback = button_callback
     
     view.add_item(approve_button)
     view.add_item(reject_button)
+    view.add_item(ban_button)
     
     await admin_channel.send(embed=embed, view=view)
 
