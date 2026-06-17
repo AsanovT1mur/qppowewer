@@ -32,8 +32,7 @@ async def on_member_join(member):
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        msg = await welcome_channel.send(embed=embed)
-        await welcome_channel.send(f"||{member.mention}||")
+        msg = await welcome_channel.send(content=f"||{member.mention}||", embed=embed)
         welcome_messages[member.id] = msg
     
     try:
@@ -112,7 +111,7 @@ async def update_welcome_message(user_id, status):
             embed.color = discord.Color.red()
         
         embed.description = new_description
-        await msg.edit(embed=embed)
+        await msg.edit(content=f"||<@{user_id}>||", embed=embed)
         del welcome_messages[user_id]
 
 async def send_verification_to_admin(user, user_data):
