@@ -103,6 +103,19 @@ async def restart_verification(user):
     )
     await asyncio.sleep(0.5)
     await user.send(embed=embed)
+
+async def update_welcome_message_underage(user_id):
+    if user_id in welcome_messages:
+        msg = welcome_messages[user_id]
+        embed = msg.embeds[0]
+        user = bot.get_user(user_id)
+        embed.title = f"🚫 Доступ запрещён"
+        embed.description = f"Сервер Arefulate доступен только для игроков старше 13 лет."
+        embed.color = discord.Color.dark_red()
+        await msg.edit(content=f"||<@{user_id}>||", embed=embed)
+        del welcome_messages[user_id]
+        if user_id in verification_attempts:
+            del verification_attempts[user_id]
             
 @bot.event
 async def on_message(message):
@@ -125,6 +138,7 @@ async def on_message(message):
                     del pending_verification[author_id]
                     await message.channel.send("К сожалению, на сервер допускаются только игроки старше 13 лет. Регистрация закрыта.")
                     try:
+                        await update_welcome_message_underage(author_id)
                         guild = bot.guilds[0]
                         member = guild.get_member(author_id)
                         if member:
