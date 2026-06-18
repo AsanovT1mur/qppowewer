@@ -124,6 +124,13 @@ async def on_message(message):
                 if age < 13:
                     del pending_verification[author_id]
                     await message.channel.send("К сожалению, на сервер допускаются только игроки старше 13 лет. Регистрация закрыта.")
+                    try:
+                        guild = bot.guilds[0]
+                        member = guild.get_member(author_id)
+                        if member:
+                            await member.kick(reason="Возраст меньше 13 лет.")
+                    except:
+                        pass
                     return
                 user_data['age'] = age
                 pending_verification[author_id]['stage'] = 'nickname'
