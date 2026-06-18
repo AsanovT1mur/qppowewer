@@ -44,7 +44,7 @@ async def on_member_join(member):
         embed = discord.Embed(
             title="Авторизация на сервере",
             description="Привет! Для доступа к серверу, пожалуйста, ответь на несколько вопросов.\n"
-                        "**Шаг 1 из 3** — Введи свой **возраст** (только число).",
+                        "**Шаг 1 из 3** - Введи свой **возраст** (только число).",
             color=discord.Color.blue()
         )
         await member.send(embed=embed)
@@ -98,7 +98,7 @@ async def restart_verification(user):
     embed = discord.Embed(
         title="Авторизация на сервере",
         description="Привет! Для доступа к серверу, пожалуйста, ответь на несколько вопросов.\n"
-                    "**Шаг 1 из 3** — Введи свой **возраст** (только число).",
+                    "**Шаг 1 из 3** - Введи свой **возраст** (только число).",
         color=discord.Color.blue()
     )
     await asyncio.sleep(0.5)
@@ -120,7 +120,12 @@ async def on_message(message):
         
         if stage == 'age':
             if message.content.isdigit():
-                user_data['age'] = int(message.content)
+                age = int(message.content)
+                if age < 13:
+                    del pending_verification[author_id]
+                    await message.channel.send("К сожалению, на сервер допускаются только игроки старше 13 лет. Регистрация закрыта.")
+                    return
+                user_data['age'] = age
                 pending_verification[author_id]['stage'] = 'nickname'
                 await asyncio.sleep(0.5)
                 await message.channel.send("Отлично! Теперь введи свой **игровой никнейм**. **(Шаг 2 из 3)**")
@@ -269,7 +274,7 @@ async def send_verification_to_admin(user, user_data):
                     pass
                 
                 embed = discord.Embed(
-                    title="🚫 Заявка отклонена — игрок забанен",
+                    title="🚫 Заявка отклонена - игрок забанен",
                     color=discord.Color.dark_red(),
                     timestamp=discord.utils.utcnow()
                 )
