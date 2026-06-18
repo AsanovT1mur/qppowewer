@@ -18,6 +18,7 @@ pending_verification = {}
 welcome_messages = {}
 verification_attempts = {}
 last_bot_messages = {}
+bot_bans = set()
 
 @bot.event
 async def on_ready():
@@ -55,10 +56,9 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_ban(guild, user):
-    async for entry in guild.audit_logs(action=discord.AuditLogAction.ban, limit=1):
-        if entry.user == bot.user:
-            return
-        break
+    if user.id in bot_bans:
+        bot_bans.discard(user.id)
+        return
     
     try:
         await user.send("Ты был забанен на сервере Arefulate.")
@@ -266,6 +266,7 @@ async def send_verification_to_admin(user, user_data):
                     pass
                 
                 try:
+                    bot_bans.add(user.id)
                     await member.ban(reason="Исчерпаны попытки.")
                 except:
                     pass
@@ -346,6 +347,7 @@ async def send_verification_to_admin(user, user_data):
                 pass
             
             try:
+                bot_bans.add(user.id)
                 await member.ban(reason=f"Забанен администратором {interaction.user.name}")
             except discord.Forbidden:
                 await interaction.response.send_message("Нет прав на бан.", ephemeral=True)
