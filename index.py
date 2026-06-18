@@ -17,6 +17,7 @@ WELCOME_CHANNEL_ID = 1475912054950072561
 pending_verification = {}
 welcome_messages = {}
 verification_attempts = {}
+last_bot_messages = {}
 
 @bot.event
 async def on_ready():
@@ -78,8 +79,20 @@ async def on_member_ban(guild, user):
     
     if user.id in verification_attempts:
         del verification_attempts[user.id]
+    
+    if user.id in last_bot_messages:
+        del last_bot_messages[user.id]
+
+async def clear_previous_buttons(user):
+    if user.id in last_bot_messages:
+        try:
+            await last_bot_messages[user.id].edit(view=None)
+        except:
+            pass
+        del last_bot_messages[user.id]
 
 async def restart_verification(user):
+    await clear_previous_buttons(user)
     verification_attempts[user.id] += 1
     pending_verification[user.id] = {'stage': 'age', 'data': {}}
     embed = discord.Embed(
@@ -283,11 +296,12 @@ async def send_verification_to_admin(user, user_data):
             await interaction.response.edit_message(embed=embed, view=None)
             
             try:
-                retry_view = discord.ui.View(timeout=None)
-                retry_button = discord.ui.Button(label="🔄 Попробовать снова", style=discord.ButtonStyle.primary, custom_id=f"retry_{user.id}")
-                quit_button = discord.ui.Button(label="🚪 Закончить общение", style=discord.ButtonStyle.secondary, custom_id=f"quit_{user.id}")
+                retry_view = discord.ui.View(timeout=300)
+                retry_button = discord.ui.Button(label="🔄 Попробовать снова", style=discord.ButtonStyle.primary)
+                quit_button = discord.ui.Button(label="🚪 Закончить общение", style=discord.ButtonStyle.secondary)
                 
                 async def retry_callback(retry_interaction):
+                    await clear_previous_buttons(user)
                     await retry_interaction.response.edit_message(content=f"Начинаем регистрацию заново, {user.mention}...", view=None)
                     await restart_verification(user)
                 
@@ -307,7 +321,8 @@ async def send_verification_to_admin(user, user_data):
                 retry_view.add_item(retry_button)
                 retry_view.add_item(quit_button)
                 
-                await user.send(f"{user.mention}, к сожалению, твоя заявка была отклонена. Ты можешь попробовать снова или закончить общение.", view=retry_view)
+                msg = await user.send(f"{user.mention}, к сожалению, твоя заявка была отклонена. Ты можешь попробовать снова или закончить общение.", view=retry_view)
+                last_bot_messages[user.id] = msg
             except:
                 pass
         
