@@ -16,6 +16,7 @@ ADMIN_CHANNEL_ID = 1475925864641462445
 WELCOME_CHANNEL_ID = 1475912054950072561
 pending_verification = {}
 welcome_messages = {}
+verification_attempts = {}
 
 @bot.event
 async def on_ready():
@@ -34,6 +35,8 @@ async def on_member_join(member):
         embed.set_thumbnail(url=member.display_avatar.url)
         msg = await welcome_channel.send(content=f"||{member.mention}||", embed=embed)
         welcome_messages[member.id] = msg
+        if member.id not in verification_attempts:
+            verification_attempts[member.id] = 0
     
     try:
         embed = discord.Embed(
@@ -72,8 +75,12 @@ async def on_member_ban(guild, user):
     
     if user.id in pending_verification:
         del pending_verification[user.id]
+    
+    if user.id in verification_attempts:
+        del verification_attempts[user.id]
 
 async def restart_verification(user):
+    verification_attempts[user.id] += 1
     pending_verification[user.id] = {'stage': 'age', 'data': {}}
     embed = discord.Embed(
         title="Авторизация на сервере",
@@ -138,6 +145,8 @@ async def update_welcome_message(user_id, status):
             embed.color = discord.Color.green()
             await msg.edit(content=f"||<@{user_id}>||", embed=embed)
             del welcome_messages[user_id]
+            if user_id in verification_attempts:
+                del verification_attempts[user_id]
         elif status == "rejected":
             embed.title = f"❌ Заявка отклонена, {bot.get_user(user_id).name if bot.get_user(user_id) else 'игрок'}"
             embed.description = "**Ты можешь пройти регистрацию снова, для этого ответь боту.**"
@@ -155,12 +164,16 @@ async def update_welcome_message(user_id, status):
             embed.color = discord.Color.dark_red()
             await msg.edit(content=f"||<@{user_id}>||", embed=embed)
             del welcome_messages[user_id]
+            if user_id in verification_attempts:
+                del verification_attempts[user_id]
 
 async def send_verification_to_admin(user, user_data):
     admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
     if not admin_channel:
         print(f"Ошибка: Канал с ID {ADMIN_CHANNEL_ID} не найден!")
         return
+    
+    current_attempt = verification_attempts.get(user.id, 0) + 1
     
     embed = discord.Embed(
         title="🔔 Новая заявка на авторизацию",
@@ -173,6 +186,7 @@ async def send_verification_to_admin(user, user_data):
     embed.add_field(name="Возраст", value=user_data['age'], inline=True)
     embed.add_field(name="Игровой никнейм", value=user_data['nickname'], inline=False)
     embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
+    embed.add_field(name="Попытка", value=f"{current_attempt}/3", inline=True)
 
     view = discord.ui.View(timeout=None)
     approve_button = discord.ui.Button(label="✅ Одобрить", style=discord.ButtonStyle.success, custom_id=f"approve_{user.id}")
@@ -221,6 +235,36 @@ async def send_verification_to_admin(user, user_data):
                 await interaction.response.send_message("Роль 'Игрок' не найдена на сервере.", ephemeral=True)
         
         elif interaction.data['custom_id'].startswith("reject"):
+            if verification_attempts.get(user.id, 0) >= 2:
+                await update_welcome_message(user.id, "banned")
+                
+                try:
+                    await user.send("Ты исчерпал все попытки регистрации. Ты был забанен на сервере Arefulate.")
+                except:
+                    pass
+                
+                try:
+                    await member.ban(reason="Исчерпаны попытки регистрации.")
+                except:
+                    pass
+                
+                embed = discord.Embed(
+                    title="🚫 Заявка отклонена — игрок забанен",
+                    color=discord.Color.dark_red(),
+                    timestamp=discord.utils.utcnow()
+                )
+                embed.add_field(name="Пользователь", value=f"{member.mention} ({str(member)})", inline=False)
+                embed.add_field(name="Discord ID", value=member.id, inline=True)
+                embed.add_field(name="Возраст", value=user_data['age'], inline=True)
+                embed.add_field(name="Игровой никнейм", value=f"**{user_data['nickname']}**", inline=False)
+                embed.add_field(name="О себе", value=user_data['about'][:1024], inline=False)
+                embed.add_field(name="Статус", value="Забанен (исчерпаны попытки)", inline=False)
+                embed.set_footer(text=f"Отклонено администратором {interaction.user.name}")
+                embed.set_thumbnail(url=member.display_avatar.url)
+                
+                await interaction.response.edit_message(embed=embed, view=None)
+                return
+            
             await update_welcome_message(user.id, "rejected")
             
             embed = discord.Embed(
