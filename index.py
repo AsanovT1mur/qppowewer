@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+GUILD_ID = int(os.getenv("GUILD_ID", "0"))
 
 intents = discord.Intents.default()
 intents.members = True
@@ -19,6 +20,17 @@ welcome_messages = {}
 verification_attempts = {}
 last_bot_messages = {}
 bot_bans = set()
+
+async def change_discord_nick(user_id, nickname):
+    guild = bot.get_guild(GUILD_ID)
+    if guild:
+        member = guild.get_member(user_id)
+        if member:
+            try:
+                await member.edit(nick=nickname)
+                print(f"Ник {user_id} изменён на {nickname}")
+            except Exception as e:
+                print(f"Не удалось сменить ник: {e}")
 
 @bot.event
 async def on_ready():
@@ -179,7 +191,7 @@ async def on_message(message):
     
     await bot.process_commands(message)
 
-async def update_welcome_message(user_id, status):
+async def update_welcome_message(user_id, status, user_data=None):
     if user_id in welcome_messages:
         msg = welcome_messages[user_id]
         embed = msg.embeds[0]
@@ -193,6 +205,8 @@ async def update_welcome_message(user_id, status):
             del welcome_messages[user_id]
             if user_id in verification_attempts:
                 del verification_attempts[user_id]
+            if user_data and 'nickname' in user_data:
+                await change_discord_nick(user_id, user_data['nickname'])
         elif status == "rejected":
             embed.title = f"❌ Заявка отклонена, {bot.get_user(user_id).name if bot.get_user(user_id) else 'игрок'}"
             embed.description = "**Ты можешь пройти регистрацию снова, для этого ответь боту.**"
@@ -254,7 +268,7 @@ async def send_verification_to_admin(user, user_data):
             if role:
                 try:
                     await member.add_roles(role)
-                    await update_welcome_message(user.id, "approved")
+                    await update_welcome_message(user.id, "approved", user_data)
                     
                     embed = discord.Embed(
                         title="✅ Заявка одобрена",
