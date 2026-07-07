@@ -254,7 +254,8 @@ async def send_verification_to_admin(user, user_data):
     ban_button = discord.ui.Button(label="⛔ Отказать и забанить", style=discord.ButtonStyle.danger, custom_id=f"ban_{user.id}")
 
     async def button_callback(interaction):
-        if not interaction.user.guild_permissions.administrator:
+        allowed_roles = [1475797819733311590, 1476590912875532370, 1475797791358976011, 1475797158828441671]
+        if not any(role.id in allowed_roles for role in interaction.user.roles) and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("Недостаточно прав.", ephemeral=True)
             return
         
