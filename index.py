@@ -43,7 +43,8 @@ async def on_member_join(member):
         embed = discord.Embed(
             title=f"Добро пожаловать, {member.name}! 🎉",
             description=f"Мы рады приветствовать тебя на сервере Arefulate!\n\n"
-                        f"**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**",
+                        f"**Пожалуйста, пройди быструю авторизацию, отправив мне личное сообщение (ЛС). Это необходимо для начала общения!**\n\n"
+                        f"**После регистрации первым делом проверь канал #пароль для доступа к серверу.**",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=member.display_avatar.url)
@@ -199,7 +200,7 @@ async def update_welcome_message(user_id, status, user_data=None):
         if status == "approved":
             user = bot.get_user(user_id)
             embed.title = f"Добро пожаловать, {user.name if user else 'игрок'}! 🎉"
-            embed.description = f"Мы рады приветствовать тебя на сервере Arefulate!\n\n**✅ Заявка одобрена**"
+            embed.description = f"Мы рады приветствовать тебя на сервере Arefulate!\n\n**Первым делом проверь канал #пароль для доступа к серверу.**\n\n**✅ Заявка одобрена**"
             embed.color = discord.Color.green()
             await msg.edit(content=f"||<@{user_id}>||", embed=embed)
             del welcome_messages[user_id]
